@@ -1,0 +1,14 @@
+# Test-group matrix for PureGebal (consumed by the reusable
+# SciML/.github grouped-tests.yml@v1 workflow).
+#
+# Core runs the functional suite on every Julia version and OS: LAPACK
+# bit-agreement, the adversarial floating-point families, generic element types,
+# ForwardDiff, allocations, and the error/status contract.
+# QA runs Aqua + ExplicitImports + JET in the isolated test/qa environment.
+
+[Core]
+versions = ["lts", "1", "pre"]
+os = ["ubuntu-latest", "macos-latest", "windows-latest"]
+
+[QA]
+versions = ["lts", "1"]

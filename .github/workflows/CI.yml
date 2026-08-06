@@ -1,0 +1,16 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+    tags: ['*']
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  tests:
+    uses: "SciML/.github/.github/workflows/grouped-tests.yml@v1"
+    with:
+      coverage: false
+    secrets: "inherit"

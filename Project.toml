@@ -1,0 +1,37 @@
+name = "PureGebal"
+uuid = "78ab2635-e639-479d-9f80-4ef5c3b42ac6"
+authors = ["Chris Rackauckas <accounts@chrisrackauckas.com> and contributors"]
+version = "1.0.0"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[weakdeps]
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+
+[extensions]
+PureGebalForwardDiffExt = "ForwardDiff"
+
+[compat]
+AllocCheck = "0.2"
+ForwardDiff = "1"
+GenericSchur = "0.5"
+LinearAlgebra = "1.10"
+Random = "1.10"
+SafeTestsets = "0.1, 1"
+SciMLTesting = "2.4"
+Test = "1.10"
+julia = "1.10"
+
+[extras]
+AllocCheck = "9b6a8646-10ed-4001-bbdc-1d2f46dfbb1a"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+GenericSchur = "c145ed77-6b09-5dd9-b285-bf645a82121e"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
+SciMLTesting = "09d9d899-5365-40a9-917a-5f67fddea283"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "Random", "ForwardDiff", "GenericSchur", "AllocCheck", "LinearAlgebra", "SafeTestsets", "SciMLTesting"]
