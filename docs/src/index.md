@@ -95,8 +95,8 @@ applying them scales value and partials identically.
 
 ## Errors and status
 
-Argument problems — a non-square matrix, a mis-sized workspace, offset indexing —
-are programming errors and always throw.
+Argument problems — a non-square matrix, a workspace of the wrong size, offset
+indexing — are programming errors and always throw.
 
 Non-finite input is different. Balancing is undefined for it, and LAPACK's
 `xGEBAL` has no error code to report it; the stdlib wrapper scans the matrix and
