@@ -19,6 +19,7 @@ PureGebal.balance
 
 ```@docs
 PureGebal.GebalWorkspace
+Base.eltype(::Type{PureGebal.GebalWorkspace{R}}) where {R}
 LinearAlgebra.issuccess(::PureGebal.GebalWorkspace)
 PureGebal.GEBAL_SUCCESS
 PureGebal.GEBAL_NONFINITE

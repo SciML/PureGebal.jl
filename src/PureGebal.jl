@@ -180,8 +180,21 @@ function GebalWorkspace(::Type{T}, n::Integer) where {T <: Number}
 end
 GebalWorkspace(A::AbstractMatrix) = GebalWorkspace(eltype(A), checksquare(A))
 
+"""
+    eltype(::Type{GebalWorkspace{R}}) -> Type
+
+The real floating-point type `R` the workspace stores its scale factors in — the
+type underlying the matrix element type it was built for, so a workspace for a
+`ComplexF32` or a `ForwardDiff.Dual` matrix has element type `Float32` or the
+float its derivative information is built on.
+
+# Examples
+
+```julia
+eltype(GebalWorkspace(ComplexF32, 4))
+```
+"""
 Base.eltype(::Type{GebalWorkspace{R}}) where {R} = R
-Base.length(ws::GebalWorkspace) = length(ws.scale)
 
 """
     LinearAlgebra.issuccess(ws::GebalWorkspace) -> Bool
