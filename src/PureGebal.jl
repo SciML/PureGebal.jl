@@ -670,4 +670,17 @@ function _swaprows!(V::AbstractMatrix, i::Integer, k::Integer, m::Integer)
     return V
 end
 
+using PrecompileTools: @compile_workload, @setup_workload
+
+@setup_workload begin
+    @compile_workload begin
+        A = [1.0 1.0e6; 1.0e-6 1.0]
+        B, ws = balance(A)
+        unbalance!(copy(B), ws)
+        V = [1.0 0.0; 0.0 1.0]
+        unbalance_eigvecs!(V, ws)
+        balance!(copy(A), GebalWorkspace(A); permute = false, scale = false)
+    end
+end
+
 end # module
