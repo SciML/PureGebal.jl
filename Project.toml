@@ -1,7 +1,7 @@
 name = "PureGebal"
 uuid = "78ab2635-e639-479d-9f80-4ef5c3b42ac6"
 authors = ["Chris Rackauckas <accounts@chrisrackauckas.com> and contributors"]
-version = "1.0.0"
+version = "1.1.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
