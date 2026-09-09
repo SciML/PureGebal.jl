@@ -7,3 +7,4 @@ PureGebal = "78ab2635-e639-479d-9f80-4ef5c3b42ac6"
 [compat]
 Documenter = "1"
 ForwardDiff = "1.4.5"
+PureGebal = "1.1.0"
