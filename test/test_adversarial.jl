@@ -83,3 +83,26 @@ end
         @test all(isfinite, ws.scale)
     end
 end
+
+@testset "subnormal norms and accumulated scales match LAPACK" begin
+    cases = (
+        [0.0 8.65e-163; 1.655e-162 0.0],
+        ComplexF64[0 8.65e-163im; 1.655e-162 0],
+        Float32[0 4e-9; 1e-37 0],
+        [0.0 0.1; 1.5e-323 0.0],
+        Matrix(Tridiagonal(fill(1e-20, 63), zeros(64), fill(1e20, 63))),
+    )
+
+    for A in cases
+        B = copy(A)
+        ws = GebalWorkspace(B)
+        balance!(B, ws)
+        Bl, ilo, ihi, scale = lapack_balance(A)
+
+        @test B == Bl
+        @test ws.ilo == ilo
+        @test ws.ihi == ihi
+        @test ws.scale == scale
+        @test all(x -> isfinite(x) && !iszero(x), ws.scale)
+    end
+end

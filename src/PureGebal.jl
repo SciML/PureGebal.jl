@@ -220,7 +220,7 @@ LinearAlgebra.issuccess(ws::GebalWorkspace) = ws.info == GEBAL_SUCCESS
 @inline function _norm_repair(A, ilo::Int, ihi::Int, i::Int, sq, cm, iscolumn::Bool)
     R = typeof(cm)
     nrm = sqrt(sq)
-    if !isfinite(nrm) || (iszero(nrm) && !iszero(cm))
+    if !isfinite(nrm) || (sq < floatmin(R) && !iszero(cm))
         e = exponent(cm)
         s = zero(R)
         @inbounds @simd for j in ilo:ihi
@@ -402,6 +402,7 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
     factor = R(0.95)
     sfmin1 = floatmin(R) / eps(R)
     sfmin2 = sfmin1 * radix
+    sfmax1 = inv(sfmin1)
     sfmax2 = inv(sfmin2)
     converged = false
     while !converged
@@ -477,6 +478,12 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
                 row_max *= radix
             end
             column_norm + row_norm >= factor * original_sum && continue
+
+            if f < one(R) && s[i] < one(R)
+                f * s[i] <= sfmin1 && continue
+            elseif f > one(R) && s[i] > one(R)
+                s[i] >= sfmax1 / f && continue
+            end
 
             converged = false
             s[i] *= f
