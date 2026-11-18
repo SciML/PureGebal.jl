@@ -410,8 +410,6 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
         @inbounds for i in ilo:ihi
             column_sq = zero(R)
             row_sq = zero(R)
-            column_max_sq = zero(R)
-            row_max_sq = zero(R)
             column_cmax = zero(R)
             row_cmax = zero(R)
             # One pass over squared magnitudes. `abs2` is branch-free and, for a
@@ -423,28 +421,22 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
                 rj = primalvalue(A[i, j])
                 column_sq += abs2(cj)
                 row_sq += abs2(rj)
-                column_max_sq = max(column_max_sq, abs2(cj))
-                row_max_sq = max(row_max_sq, abs2(rj))
                 column_cmax = max(column_cmax, _cmax(cj))
                 row_cmax = max(row_cmax, _cmax(rj))
             end
             column_norm = _norm_repair(A, ilo, ihi, i, column_sq, column_cmax, true)
             row_norm = _norm_repair(A, ilo, ihi, i, row_sq, row_cmax, false)
-            column_max = sqrt(column_max_sq)
-            row_max = sqrt(row_max_sq)
-            # A max left at `Inf` silently trips the `sfmax2` guard below and
-            # abandons the scaling loop, balancing nothing at all.
-            if !isfinite(column_max) || (iszero(column_max) && !iszero(column_cmax))
-                column_max = zero(R)
-                for j in ilo:ihi
-                    column_max = max(column_max, abs(primalvalue(A[j, i])))
-                end
+            # Scaling touches the entire active row to the right and the entire
+            # active column above, not only the balancing block. Guard those full
+            # spans so an isolated coupling cannot overflow. The diagonal is
+            # unchanged by a similarity transform and is deliberately excluded.
+            column_max = zero(R)
+            for j in 1:ihi
+                j == i || (column_max = max(column_max, abs(primalvalue(A[j, i]))))
             end
-            if !isfinite(row_max) || (iszero(row_max) && !iszero(row_cmax))
-                row_max = zero(R)
-                for j in ilo:ihi
-                    row_max = max(row_max, abs(primalvalue(A[i, j])))
-                end
+            row_max = zero(R)
+            for j in ilo:n
+                j == i || (row_max = max(row_max, abs(primalvalue(A[i, j]))))
             end
 
             (iszero(column_norm) || iszero(row_norm)) && continue
@@ -489,10 +481,10 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
             s[i] *= f
             invf = inv(f)
             for j in ilo:n
-                A[i, j] *= invf
+                j == i || (A[i, j] *= invf)
             end
             for j in 1:ihi
-                A[j, i] *= f
+                j == i || (A[j, i] *= f)
             end
         end
     end

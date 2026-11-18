@@ -106,3 +106,25 @@ end
         @test all(x -> isfinite(x) && !iszero(x), ws.scale)
     end
 end
+
+@testset "scaling preserves isolated couplings and subnormal diagonals" begin
+    # Row 1 is scaled inside the balancing block, but its coupling to the
+    # isolated third index is also modified. The scale guard must see it and
+    # decline a transformation that would overflow it.
+    A = [0.0 1.0e-162 floatmax(Float64); 2.65e-162 0.0 0.0; 0.0 0.0 1.0]
+    B = copy(A)
+    ws = GebalWorkspace(B)
+    balance!(B, ws)
+    @test B[1, 3] == A[1, 3]
+    @test isfinite(B[1, 3])
+
+    # A diagonal entry receives reciprocal multipliers during a similarity
+    # transform. Leaving it untouched prevents a subnormal value from flushing
+    # to zero between the two exact operations.
+    C = [nextfloat(0.0) 2.65e-162; 1.0e-162 0.0]
+    D = copy(C)
+    ws = GebalWorkspace(D)
+    balance!(D, ws; permute = false)
+    @test D[1, 1] == C[1, 1]
+    @test tr(D) == tr(C)
+end
