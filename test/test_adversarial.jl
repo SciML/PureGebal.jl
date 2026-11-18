@@ -88,9 +88,9 @@ end
     cases = (
         [0.0 8.65e-163; 1.655e-162 0.0],
         ComplexF64[0 8.65e-163im; 1.655e-162 0],
-        Float32[0 4e-9; 1e-37 0],
+        Float32[0 4.0e-9; 1.0e-37 0],
         [0.0 0.1; 1.5e-323 0.0],
-        Matrix(Tridiagonal(fill(1e-20, 63), zeros(64), fill(1e20, 63))),
+        Matrix(Tridiagonal(fill(1.0e-20, 63), zeros(64), fill(1.0e20, 63))),
     )
 
     for A in cases
