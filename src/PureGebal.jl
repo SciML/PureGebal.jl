@@ -505,7 +505,7 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
             # A subnormal component can remain nonzero after the first pass
             # yet still round differently after the reciprocal pass. Check
             # every isolated entry that would be scaled in that range.
-            if f > one(R) && row_min / f < floatmin(R)
+            if f > one(R) && row_min / f <= floatmin(R)
                 invf = inv(f)
                 preserves_roundtrip = true
                 for j in (ihi + 1):n
@@ -515,7 +515,7 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
                     end
                 end
                 preserves_roundtrip || continue
-            elseif f < one(R) && column_min * f < floatmin(R)
+            elseif f < one(R) && column_min * f <= floatmin(R)
                 invf = inv(f)
                 preserves_roundtrip = true
                 for j in 1:(ilo - 1)

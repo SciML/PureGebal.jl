@@ -147,6 +147,30 @@ end
     unbalance!(recovered, ws)
     @test recovered == G
 
+    # Rounding can also occur exactly at the normal boundary: a value just
+    # below 2floatmin rounds up to floatmin when it is halved. Exercise both
+    # shrinking spans and precisions, while retaining an exact 4u control.
+    for T in (Float32, Float64)
+        u = nextfloat(zero(T))
+        q = sqrt(u)
+        a = T(0.45) * q
+        b = T(1.2) * q
+        for transpose_fixture in (false, true)
+            cases = ((prevfloat(T(2) * floatmin(T)), false), (T(4) * u, true))
+            for (x, should_scale) in cases
+                J = T[0 a floatmax(T); b 0 x; 0 0 1]
+                transpose_fixture && (J = copy(transpose(J)))
+                K = copy(J)
+                ws = GebalWorkspace(K)
+                balance!(K, ws)
+                recovered = copy(K)
+                unbalance!(recovered, ws)
+                @test recovered == J
+                @test (ws.scale[2] != one(T)) == should_scale
+            end
+        end
+    end
+
     # A diagonal entry receives reciprocal multipliers during a similarity
     # transform. Leaving it untouched prevents a subnormal value from flushing
     # to zero between the two exact operations.
