@@ -124,6 +124,16 @@ _scaletype(::Type{T}) where {T <: Number} = float(primaltype(T))
 @inline _cmax(x::Real) = abs(x)
 @inline _cmax(z::Complex) = max(abs(real(z)), abs(imag(z)))
 
+# Smallest nonzero component magnitude. Scaling is by a real power of two, so
+# component extrema (rather than complex magnitudes) precisely describe whether
+# a touched entry can overflow or underflow.
+@inline _cmin(x::Real) = iszero(x) ? oftype(abs(x), Inf) : abs(x)
+@inline function _cmin(z::Complex)
+    re = abs(real(z))
+    im = abs(imag(z))
+    return min(iszero(re) ? oftype(re, Inf) : re, iszero(im) ? oftype(im, Inf) : im)
+end
+
 """
     GebalWorkspace{R}
 
@@ -426,17 +436,22 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
             end
             column_norm = _norm_repair(A, ilo, ihi, i, column_sq, column_cmax, true)
             row_norm = _norm_repair(A, ilo, ihi, i, row_sq, row_cmax, false)
-            # Scaling touches the entire active row to the right and the entire
-            # active column above, not only the balancing block. Guard those full
-            # spans so an isolated coupling cannot overflow. The diagonal is
-            # unchanged by a similarity transform and is deliberately excluded.
-            column_max = zero(R)
-            for j in 1:ihi
-                j == i || (column_max = max(column_max, abs(primalvalue(A[j, i]))))
+            # The active-block extrema are already known from the norm pass.
+            # Only isolated leading/trailing spans need an additional scan.
+            # The diagonal is unchanged by a similarity transform and excluded.
+            column_max = column_cmax
+            column_min = R(Inf)
+            for j in 1:(ilo - 1)
+                a = primalvalue(A[j, i])
+                column_max = max(column_max, _cmax(a))
+                column_min = min(column_min, _cmin(a))
             end
-            row_max = zero(R)
-            for j in ilo:n
-                j == i || (row_max = max(row_max, abs(primalvalue(A[i, j]))))
+            row_max = row_cmax
+            row_min = R(Inf)
+            for j in (ihi + 1):n
+                a = primalvalue(A[i, j])
+                row_max = max(row_max, _cmax(a))
+                row_min = min(row_min, _cmin(a))
             end
 
             (iszero(column_norm) || iszero(row_norm)) && continue
@@ -475,6 +490,13 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
                 f * s[i] <= sfmin1 && continue
             elseif f > one(R) && s[i] > one(R)
                 s[i] >= sfmax1 / f && continue
+            end
+
+            # The row is shrunk for f > 1 and the column for f < 1. Preserve
+            # isolated finite couplings that would otherwise underflow.
+            if (f > one(R) && iszero(row_min / f)) ||
+                    (f < one(R) && iszero(column_min * f))
+                continue
             end
 
             converged = false

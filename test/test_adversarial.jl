@@ -1,4 +1,4 @@
-using PureGebal: GebalWorkspace, balance!
+using PureGebal: GebalWorkspace, balance!, unbalance!
 using LinearAlgebra
 using Random
 using Test
@@ -111,12 +111,21 @@ end
     # Row 1 is scaled inside the balancing block, but its coupling to the
     # isolated third index is also modified. The scale guard must see it and
     # decline a transformation that would overflow it.
-    A = [0.0 1.0e-162 floatmax(Float64); 2.65e-162 0.0 0.0; 0.0 0.0 1.0]
+    A = [
+        0.0 1.0e-162 floatmax(Float64)
+        2.65e-162 0.0 nextfloat(0.0)
+        0.0 0.0 1.0
+    ]
     B = copy(A)
     ws = GebalWorkspace(B)
     balance!(B, ws)
     @test B[1, 3] == A[1, 3]
     @test isfinite(B[1, 3])
+    @test B[2, 3] == A[2, 3]
+
+    recovered = copy(B)
+    unbalance!(recovered, ws)
+    @test recovered == A
 
     # A diagonal entry receives reciprocal multipliers during a similarity
     # transform. Leaving it untouched prevents a subnormal value from flushing
