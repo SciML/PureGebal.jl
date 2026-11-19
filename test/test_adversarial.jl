@@ -127,6 +127,26 @@ end
     unbalance!(recovered, ws)
     @test recovered == A
 
+    # A nonzero subnormal may survive the shrinking pass but still fail to
+    # round-trip through the reciprocal expansion. Keep the odd component
+    # intact instead of accepting a transformed value that cannot be undone.
+    odd = nextfloat(0.0)
+    E = [0.0 1.0e-162 floatmax(Float64); 2.65e-162 0.0 3odd; 0.0 0.0 1.0]
+    F = copy(E)
+    ws = GebalWorkspace(F)
+    balance!(F, ws)
+    recovered = copy(F)
+    unbalance!(recovered, ws)
+    @test recovered == E
+
+    G = ComplexF64[0 1.0e-162 floatmax(Float64); 2.65e-162 0 2odd + 3odd * im; 0 0 1]
+    H = copy(G)
+    ws = GebalWorkspace(H)
+    balance!(H, ws)
+    recovered = copy(H)
+    unbalance!(recovered, ws)
+    @test recovered == G
+
     # A diagonal entry receives reciprocal multipliers during a similarity
     # transform. Leaving it untouched prevents a subnormal value from flushing
     # to zero between the two exact operations.

@@ -134,6 +134,9 @@ _scaletype(::Type{T}) where {T <: Number} = float(primaltype(T))
     return min(iszero(re) ? oftype(re, Inf) : re, iszero(im) ? oftype(im, Inf) : im)
 end
 
+@inline _roundtrips_scale(x, scale, inverse_scale) =
+    x * scale * inverse_scale == x
+
 """
     GebalWorkspace{R}
 
@@ -497,6 +500,31 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
             if (f > one(R) && iszero(row_min / f)) ||
                     (f < one(R) && iszero(column_min * f))
                 continue
+            end
+
+            # A subnormal component can remain nonzero after the first pass
+            # yet still round differently after the reciprocal pass. Check
+            # every isolated entry that would be scaled in that range.
+            if f > one(R) && row_min / f < floatmin(R)
+                invf = inv(f)
+                preserves_roundtrip = true
+                for j in (ihi + 1):n
+                    if !_roundtrips_scale(primalvalue(A[i, j]), invf, f)
+                        preserves_roundtrip = false
+                        break
+                    end
+                end
+                preserves_roundtrip || continue
+            elseif f < one(R) && column_min * f < floatmin(R)
+                invf = inv(f)
+                preserves_roundtrip = true
+                for j in 1:(ilo - 1)
+                    if !_roundtrips_scale(primalvalue(A[j, i]), f, invf)
+                        preserves_roundtrip = false
+                        break
+                    end
+                end
+                preserves_roundtrip || continue
             end
 
             converged = false
