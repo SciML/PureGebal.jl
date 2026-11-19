@@ -1,7 +1,7 @@
 # PureGebal.jl
 
 [![Build Status](https://github.com/SciML/PureGebal.jl/workflows/CI/badge.svg)](https://github.com/SciML/PureGebal.jl/actions?query=workflow%3ACI)
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://docs.sciml.ai/PureGebal/stable/)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://docs.sciml.ai/PureGebal/dev/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://docs.sciml.ai/PureGebal/dev/)
 [![ColPrac: Contributor's Guide](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
 [![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
