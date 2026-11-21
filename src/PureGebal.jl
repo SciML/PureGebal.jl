@@ -127,10 +127,13 @@ _scaletype(::Type{T}) where {T <: Number} = float(primaltype(T))
 # Smallest nonzero component magnitude. Scaling is by a real power of two, so
 # component extrema (rather than complex magnitudes) precisely describe whether
 # a touched entry can overflow or underflow.
-@inline _cmin(x::Real) = iszero(x) ? oftype(abs(x), Inf) : abs(x)
+@inline function _cmin(x::Real)
+    ax = float(abs(x))
+    return iszero(ax) ? oftype(ax, Inf) : ax
+end
 @inline function _cmin(z::Complex)
-    re = abs(real(z))
-    im = abs(imag(z))
+    re = float(abs(real(z)))
+    im = float(abs(imag(z)))
     return min(iszero(re) ? oftype(re, Inf) : re, iszero(im) ? oftype(im, Inf) : im)
 end
 
@@ -233,7 +236,7 @@ LinearAlgebra.issuccess(ws::GebalWorkspace) = ws.info == GEBAL_SUCCESS
 @inline function _norm_repair(A, ilo::Int, ihi::Int, i::Int, sq, cm, iscolumn::Bool)
     R = typeof(cm)
     nrm = sqrt(sq)
-    if !isfinite(nrm) || (sq < floatmin(R) && !iszero(cm))
+    if !isfinite(nrm) || (sq <= floatmin(R) && !iszero(cm))
         e = exponent(cm)
         s = zero(R)
         @inbounds @simd for j in ilo:ihi
@@ -425,6 +428,8 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
             row_sq = zero(R)
             column_cmax = zero(R)
             row_cmax = zero(R)
+            column_min = R(Inf)
+            row_min = R(Inf)
             # One pass over squared magnitudes. `abs2` is branch-free and, for a
             # complex element type, avoids the per-element `sqrt` that `abs` and
             # `hypot` pay; the component max rides along to make the over/underflow
@@ -436,29 +441,32 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
                 row_sq += abs2(rj)
                 column_cmax = max(column_cmax, _cmax(cj))
                 row_cmax = max(row_cmax, _cmax(rj))
+                if j != i
+                    column_min = min(column_min, _cmin(cj))
+                    row_min = min(row_min, _cmin(rj))
+                end
             end
             column_norm = _norm_repair(A, ilo, ihi, i, column_sq, column_cmax, true)
             row_norm = _norm_repair(A, ilo, ihi, i, row_sq, row_cmax, false)
+            (iszero(column_norm) || iszero(row_norm)) && continue
+            if column_norm >= row_norm / radix && row_norm > column_norm / radix
+                continue
+            end
             # The active-block extrema are already known from the norm pass.
             # Only isolated leading/trailing spans need an additional scan.
             # The diagonal is unchanged by a similarity transform and excluded.
             column_max = column_cmax
-            column_min = R(Inf)
             for j in 1:(ilo - 1)
                 a = primalvalue(A[j, i])
                 column_max = max(column_max, _cmax(a))
                 column_min = min(column_min, _cmin(a))
             end
             row_max = row_cmax
-            row_min = R(Inf)
             for j in (ihi + 1):n
                 a = primalvalue(A[i, j])
                 row_max = max(row_max, _cmax(a))
                 row_min = min(row_min, _cmin(a))
             end
-
-            (iszero(column_norm) || iszero(row_norm)) && continue
-
             g = row_norm / radix
             original_sum = column_norm + row_norm
             f = one(R)
@@ -504,12 +512,12 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
 
             # A subnormal component can remain nonzero after the first pass
             # yet still round differently after the reciprocal pass. Check
-            # every isolated entry that would be scaled in that range.
+            # every entry that would be scaled in that range.
             if f > one(R) && row_min / f <= floatmin(R)
                 invf = inv(f)
                 preserves_roundtrip = true
-                for j in (ihi + 1):n
-                    if !_roundtrips_scale(primalvalue(A[i, j]), invf, f)
+                for j in ilo:n
+                    if j != i && !_roundtrips_scale(primalvalue(A[i, j]), invf, f)
                         preserves_roundtrip = false
                         break
                     end
@@ -518,8 +526,8 @@ function _scale_block!(A, s::Vector{R}, n::Int, ilo::Int, ihi::Int) where {R}
             elseif f < one(R) && column_min * f <= floatmin(R)
                 invf = inv(f)
                 preserves_roundtrip = true
-                for j in 1:(ilo - 1)
-                    if !_roundtrips_scale(primalvalue(A[j, i]), f, invf)
+                for j in 1:ihi
+                    if j != i && !_roundtrips_scale(primalvalue(A[j, i]), f, invf)
                         preserves_roundtrip = false
                         break
                     end
@@ -611,13 +619,19 @@ function unbalance!(X::AbstractMatrix, ws::GebalWorkspace)
         throw(ArgumentError("workspace does not hold a successful balancing"))
     s = ws.scale
     ilo, ihi = ws.ilo, ws.ihi
-    @inbounds for j in ilo:ihi
-        scj = s[j]
-        for i in 1:n
-            X[j, i] *= scj
+    @inbounds for i in ilo:ihi
+        for j in 1:(ilo - 1)
+            X[i, j] *= s[i]
+            X[j, i] /= s[i]
         end
-        for i in 1:n
-            X[i, j] /= scj
+        for j in (ihi + 1):n
+            X[i, j] *= s[i]
+            X[j, i] /= s[i]
+        end
+        for j in ilo:ihi
+            if s[i] != s[j]
+                X[i, j] *= s[i] / s[j]
+            end
         end
     end
     # The permutations are packed into `scale` outside `ilo:ihi`, and undoing

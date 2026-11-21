@@ -34,7 +34,7 @@ const FAMILIES = (
     rng = Random.Xoshiro(31337)
     for (name, gen) in FAMILIES, T in (Float64, ComplexF64)
         @testset "$name / $T" begin
-            worse = 0
+            lossy = 0
             total = 0
             for _ in 1:150
                 n = rand(rng, 2:12)
@@ -51,15 +51,69 @@ const FAMILIES = (
                 # deliberately declines to scale when doing so would overflow, so
                 # tens of octaves of residual imbalance are correct on full-range
                 # input -- LAPACK leaves exactly the same. What must never happen
-                # is coming out measurably worse than the reference, which is how
-                # a dropped overflow guard manifests (it skips the scaling loop
-                # entirely and leaves hundreds of octaves).
+                # is coming out measurably worse without preserving the original
+                # matrix exactly. PureGebal may decline a LAPACK scaling step
+                # when that step would irreversibly round a subnormal component.
                 Bl, _, _, _ = lapack_balance(A)
-                imbalance(B) > imbalance(Bl) + 1.0e-9 && (worse += 1)
+                if imbalance(B) > imbalance(Bl) + 1.0e-9
+                    recovered = unbalance!(copy(B), ws)
+                    recovered == A || (lossy += 1)
+                end
             end
             @test total > 0
-            @test worse == 0
+            @test lossy == 0
         end
+    end
+end
+
+@testset "scaling preserves active-block subnormals" begin
+    u = nextfloat(0.0)
+    q = sqrt(u)
+    a = 3q / 4
+    b = 2q
+    A = [0.0 a 0.0; b 0.0 u; u 0.0 0.0]
+    B = copy(A)
+    ws = GebalWorkspace(B)
+    balance!(B, ws)
+
+    @test !iszero(B[3, 1])
+    @test !iszero(det(big.(B)))
+    @test unbalance!(copy(B), ws) == A
+end
+
+@testset "unbalancing applies each net scale once" begin
+    u = nextfloat(0.0)
+    q = sqrt(u)
+    a = 3q / 4
+    b = 2q
+    cases = (
+        [0.0 a u 0.0; b 0.0 0.0 0.0; 0.0 0.0 0.0 a; 0.0 u b 0.0],
+        [u a; b 0.0],
+    )
+
+    for A in cases
+        B = copy(A)
+        ws = GebalWorkspace(B)
+        balance!(B, ws)
+        @test unbalance!(copy(B), ws) == A
+    end
+end
+
+@testset "integer zeros and BigFloat boundary norms" begin
+    for T in (Int, Complex{Int})
+        A = zeros(T, 2, 2)
+        ws = GebalWorkspace(A)
+        @test balance!(A, ws) === ws
+    end
+
+    setprecision(BigFloat, 256) do
+        q = sqrt(floatmin(BigFloat))
+        A = BigFloat[0 3q / 8; 3q / 4 0]
+        B = copy(A)
+        ws = GebalWorkspace(B)
+        balance!(B, ws)
+        @test ws.scale == ones(BigFloat, 2)
+        @test B == A
     end
 end
 
