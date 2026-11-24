@@ -9,6 +9,7 @@
 [Core]
 versions = ["lts", "1", "pre"]
 os = ["ubuntu-latest", "macos-latest", "windows-latest"]
+num_threads = 4
 
 ["Core 32-bit"]
 group = "Core"
