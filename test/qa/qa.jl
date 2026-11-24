@@ -18,6 +18,7 @@ const FORWARDDIFF_NONPUBLIC = (:Dual, :value)
 
 run_qa(
     PureGebal;
+    jet_kwargs = (; mode = :basic),
     ei_kwargs = (;
         all_explicit_imports_are_public = (; ignore = FORWARDDIFF_NONPUBLIC),
         all_qualified_accesses_are_public = (; ignore = FORWARDDIFF_NONPUBLIC),

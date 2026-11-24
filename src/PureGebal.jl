@@ -88,7 +88,7 @@ primalvalue(1.0 + 2.0im)
 ```
 """
 primalvalue(x::Real) = x
-primalvalue(z::Complex) = complex(primalvalue(real(z)), primalvalue(imag(z)))
+primalvalue(z::Complex) = complex(primalvalue(real(z))::Real, primalvalue(imag(z))::Real)
 
 """
     primaltype(::Type{T}) -> Type
